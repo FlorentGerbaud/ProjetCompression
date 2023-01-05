@@ -78,14 +78,14 @@ def centrageSurOctet(matrix_img):
 
 
 def matrixPassageOrtho(n):
-    P = [[0]*n for i in range(n)]
+    P = np.array([[0]*n for i in range(n)])
     C0 = 1/(mp.sqrt(2))
     for i in range(0,n):
         for j in range(0,n):
             if (i == 0 ):
-                P[i][j] = (1/2) * C0 * np.cos((2*j + 1) * i * mp.pi/16)
+                P[i,j] = (1/2) * C0 * np.cos((2*j + 1) * i * mp.pi/16)
             else:
-                P[i][j] = (1/2) * mp.cos((2*j + 1) * i * mp.pi/16)
+                P[i,j] = (1/2) * mp.cos((2*j + 1) * i * mp.pi/16)
     return np.array(P).astype(float)
 
 
@@ -126,13 +126,14 @@ def DiscretCosineTransform(matrix_image_2D,P,Pt):
     
     new_matrix_dct = np.array([[0]*height]*width)
 
-    for i in range(0,16,8):
-        for j in range(0,16,8):
+    for i in range(0,width,8):
+        for j in range(0,height,8):
             bloc = extraireBloc(i,j,matrix_image_2D)
             bloc_dct = chgtBaseBloc(bloc,P,Pt)
+            print(bloc_dct.astype(int))
             ecrireBlocToMatrix(new_matrix_dct,bloc_dct,i,j)
         
-    return np.array(new_matrix_dct).astype(float)
+    return np.array(new_matrix_dct)
       
       
 Q = np.array([ [16,11,10,16,24,40,51,61],
@@ -145,30 +146,39 @@ Q = np.array([ [16,11,10,16,24,40,51,61],
      [72,92,95,98,112,100,103,99]])
 
 
-def DivideByTerm(Q,D):
-    return np.array(np.divide(D,Q))
-
-
-
-def Compression(matrix_img_2D):
+def Compression(matrix_image_2D):
     
-    print("test")
+    dim = np.shape(matrix_image_2D)
+    width = dim[0]
+    height = dim[1]
+    
+    new_matrix_dct = np.array([[0]*height]*width)
+
+    for i in range(0,width,8):
+        for j in range(0,height,8):
+            
+            bloc = extraireBloc(i,j,matrix_image_2D)
+            bloc_dct = chgtBaseBloc(bloc,P,Pt)
+            bloc_divide = np.floor(np.divide(bloc_dct,Q))
+            ecrireBlocToMatrix(new_matrix_dct,bloc_divide,i,j)
+        
+    return np.array(new_matrix_dct).astype(float)
+    
 
 
 
 
 img1 = tronquerImage(IMG_PATH_1) 
 img2 = centrageSurOctet(img1)
-
+print(np.shape(img2))
 P = matrixPassageOrtho(8)
 Pt = P.transpose()
-K = img2[0:8,0:8]
-
-test1 = DiscretCosineTransform(img2,P,Pt)
-res = DivideByTerm(Q,test1)
-print(res)
+K = img2[48:56,48:56]
 
 
+res = chgtBaseBloc(K,P,Pt)
+final = Compression(img2)
+print(np.count_nonzero(final))
 
 
 
