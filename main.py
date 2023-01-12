@@ -14,6 +14,8 @@ IMG_PATH_2 = 'im2.jpg'
 IMG_PATH_3 = 'im3.jpg'
 IMG_PATH_4 = 'im4.jpg'
 IMG_PATH_5 = 'im5.jpg'
+IMG_PATH_6 = '4K.jpg'
+
 MATRIX_Q = np.array([[16.0,11.0,10.0,16.0,24.0,40.0,51.0,61.0],
                     [12.0,12.0,13.0,19.0,26.0,58.0,60.0,55.0],
                     [14.0,13.0,16.0,24.0,40.0,57.0,69.0,56.0],
@@ -22,10 +24,6 @@ MATRIX_Q = np.array([[16.0,11.0,10.0,16.0,24.0,40.0,51.0,61.0],
                     [24.0,35.0,55.0,64.0,81.0,104.0,113.0,92.0],
                     [49.0,64.0,78.0,87.0,103.0,121.0,120.0,101.0],
                     [72.0,92.0,95.0,98.0,112.0,100.0,103.0,99.0]])
-
-
-
-
 
 
 
@@ -92,6 +90,9 @@ def DCTII_AND_COMPRESS(path_image,P,Pt,methode,frequence):
 
     # COMPRESSION DE CHAQUE CANAL
     if(methode == True):
+        
+        print("Sans filtrage hautes fréquences")
+        
         for i in range(0,new_width,8): 
             
             for j in range(0,new_height,8):
@@ -99,21 +100,25 @@ def DCTII_AND_COMPRESS(path_image,P,Pt,methode,frequence):
                 # COMPRESSION DU CANAL R
                 M = img_matrix[i:i+8,j:j+8,0]
                 D = np.dot(np.dot(P,M),Pt)
-                d_by_q = np.divide(D,MATRIX_Q).astype(int)
+                d_by_q = np.divide(D,MATRIX_Q)
                 img_matrix[i:i+8,j:j+8,0] = d_by_q
                 
                 # COMPRESSION DU CANAL G
                 M = img_matrix[i:i+8,j:j+8,1]
                 D = np.dot(np.dot(P,M),Pt)
-                d_by_q = np.divide(D,MATRIX_Q).astype(int)
+                d_by_q = np.divide(D,MATRIX_Q)
                 img_matrix[i:i+8,j:j+8,1] = d_by_q
                 
                 # COMPRESSION DU CANAL B
                 M = img_matrix[i:i+8,j:j+8,2]
                 D = np.dot(np.dot(P,M),Pt)
-                d_by_q = np.divide(D,MATRIX_Q).astype(int)
+                d_by_q = np.divide(D,MATRIX_Q)
                 img_matrix[i:i+8,j:j+8,2] = d_by_q
+                
+        return img_matrix.astype(int),new_height,new_width # end function
+    
     else:
+
         for i in range(0,new_width,8): 
             
             for j in range(0,new_height,8):
@@ -121,28 +126,28 @@ def DCTII_AND_COMPRESS(path_image,P,Pt,methode,frequence):
                 # COMPRESSION DU CANAL R
                 M = img_matrix[i:i+8,j:j+8,0]
                 D = np.dot(np.dot(P,M),Pt)
-                d_by_q = np.divide(D,MATRIX_Q).astype(int)
-                img_matrix[i:i+8,j:j+8,0] = Filtre(d_by_q,frequence)
+                d_by_q = np.divide(D,MATRIX_Q)
+                tt = np.empty((8,8))
+                tt[0:frequence,0:frequence] = np.flipud(np.tril(np.flipud(d_by_q[0:frequence,0:frequence]),0))
+                img_matrix[i:i+8,j:j+8,0] = tt
                 
                 # COMPRESSION DU CANAL G
                 M = img_matrix[i:i+8,j:j+8,1]
                 D = np.dot(np.dot(P,M),Pt)
-                d_by_q = np.divide(D,MATRIX_Q).astype(int)
-                img_matrix[i:i+8,j:j+8,1] = Filtre(d_by_q,frequence)
+                d_by_q = np.divide(D,MATRIX_Q)
+                tt = np.empty((8,8))
+                tt[0:frequence,0:frequence] = np.flipud(np.tril(np.flipud(d_by_q[0:frequence,0:frequence]),0))
+                img_matrix[i:i+8,j:j+8,1] = tt
                 
                 # COMPRESSION DU CANAL B
                 M = img_matrix[i:i+8,j:j+8,2]
                 D = np.dot(np.dot(P,M),Pt)
-                d_by_q = np.divide(D,MATRIX_Q).astype(int)
-                img_matrix[i:i+8,j:j+8,2] = Filtre(d_by_q,frequence)
-
-    print('Compression Ratio = ',(1-((np.count_nonzero(img_matrix.astype(int)))/(new_height*new_width*3)))*100,' %')
-
-           
-
-
-
-    return img_matrix # end function
+                d_by_q = np.divide(D,MATRIX_Q)
+                tt = np.empty((8,8))
+                tt[0:frequence,0:frequence] = np.flipud(np.tril(np.flipud(d_by_q[0:frequence,0:frequence]),0))
+                img_matrix[i:i+8,j:j+8,2] = tt
+                
+        return img_matrix.astype(int),new_height,new_width # end function
 
     
                 
@@ -197,7 +202,7 @@ def DECOMPRESSION(matrix_compress,P ,Pt):
     width = dim[0]
     height = dim[1]
     
-    matrix_decompress = np.empty((width,height,3)).astype(float)
+    matrix_decompress = np.empty((width,height,3))
     
 
     for i in range(0,width,8):
@@ -222,7 +227,7 @@ def DECOMPRESSION(matrix_compress,P ,Pt):
             M = np.dot(np.dot(Pt,Q),P) + 128.00
             matrix_decompress[i:i+8,j:j+8,2] = M
         
-    return matrix_decompress
+    return matrix_decompress.astype(int)
 
 
 
@@ -240,20 +245,30 @@ def DECOMPRESSION(matrix_compress,P ,Pt):
 P = matrixPassageOrtho(8)
 Pt = P.transpose()
 
-img = np.array(getImage(IMG_PATH_3))
+img = np.array(getImage(IMG_PATH_2))
 
-start_time = time.time()
+start_time_compression = time.time()
 
-image_compress = DCTII_AND_COMPRESS(IMG_PATH_3,P,Pt,False,2)
+image_compress = DCTII_AND_COMPRESS(IMG_PATH_2,P,Pt,False,2)
 
-image_decompress = DECOMPRESSION(image_compress,P,Pt).astype(int)
+final_time_compression = time.time()
 
-print(image_decompress[0:8,0:8,0])
-final_time = time.time()
+start_time_decompression = time.time()
+
+image_decompress = DECOMPRESSION(image_compress[0],P,Pt)
+
+final_time_decompression = time.time()
+
+
+print('Compression Ratio = ',(1-((np.count_nonzero(image_compress[0]))/(image_compress[1]*image_compress[2]*3)))*100,' %')
 
 print('Erreur en Norme L2 = ',(LA.norm(img-image_decompress)/LA.norm(img))*100,' %')
 
-print("Temps d'éxécution (Compression + Décompréssion) = ",(final_time- start_time), " secondes")
+print("Temps Exécution Compression = ",(final_time_compression - start_time_compression), " secondes")
+
+print("Temps Exécution Décompression = ",(final_time_decompression - start_time_decompression), " secondes")
+
+print("Temps Exécution Compression + Décompression = ", final_time_decompression - start_time_compression, " secondes")
 
 
 #####################################################################
@@ -262,11 +277,11 @@ print("Temps d'éxécution (Compression + Décompréssion) = ",(final_time- star
 #                                                                   #
 #####################################################################
 # COMPRESSION - DECOMPRESSION
-plt.figure(1)
+plt.figure("image compressée puis décompressée")
 plt.imshow(image_decompress)
 
 # ORIGINELLE
-plt.figure(2)
+plt.figure("image de base")
 plt.imshow(img)
 plt.show()
 
