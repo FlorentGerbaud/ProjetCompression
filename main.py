@@ -7,7 +7,12 @@ import time
 from numpy import linalg as LA
 
 
-# CONSTANTES DU PROGRAMME  
+#####################################################################
+#                                                                   #
+#                         CONSTANTES DU PRGRAMME                    #
+#                                                                   #
+#####################################################################
+
 
 IMG_PATH_1 = 'im1.jpg'
 IMG_PATH_2 = 'im2.jpg'
@@ -26,6 +31,13 @@ MATRIX_Q = np.array([[16.0,11.0,10.0,16.0,24.0,40.0,51.0,61.0],
                     [72.0,92.0,95.0,98.0,112.0,100.0,103.0,99.0]])
 
 
+#####################################################################################################
+#                                                                                                   #
+#             PETITE VERIFICATION DE L'EXTENSION    (MAIS PAS UTILISE DANS LE MAIN)                 #
+#                                                                                                   #
+#####################################################################################################
+
+
 
 def checkExtension(path_image):
     
@@ -39,11 +51,26 @@ def checkExtension(path_image):
     return extension , path_folder, name_image
 
 
+#####################################################################
+#                                                                   #
+#                    RECUPERATION DE L'IMAGE                        #
+#                                                                   #
+#####################################################################
 
 
-
+    
 
 def getImage(path_image):
+    
+    """ récupération de l'image et conversion si pas d'extension .jpg
+
+    Args:
+        path_image (string): chemin absolue vers l'image ou relatif
+
+    Returns:
+        tableau de tableau de pixels (et pas une matrice)
+        
+    """
     
     res = checkExtension(path_image)
     if(res[0] != "jpg"  or res[0] != "JPG"):
@@ -66,6 +93,18 @@ def getImage(path_image):
 
 
 def DCTII_AND_COMPRESS(path_image,P,Pt,methode,frequence):
+    """ Fonction appliquant une DCTII et une Compression (avec perte ici)
+
+    Args:
+        path_image (string): 
+        P (np.array := matrix 2D): la matrice orthogonale P
+        Pt (np.array := matrix 2D): la transposée de la de P
+        methode (boolean): True si uniquement changement de base, False si changement de base + filtre hautes fréquences
+        frequence (int): fréquence de coupure des hautes fréquences :
+        
+    Returns:
+        (np.array := dim(x,y,z) = dim(largeur,hauteur,3)): matrice "3D" de l'image compressée
+    """
     
     img_matrix = np.array(getImage(path_image))
     
@@ -119,33 +158,35 @@ def DCTII_AND_COMPRESS(path_image,P,Pt,methode,frequence):
     
     else:
 
+        k, p = np.indices((8,8))
+        
         for i in range(0,new_width,8): 
             
             for j in range(0,new_height,8):
                 
                 # COMPRESSION DU CANAL R
+                
                 M = img_matrix[i:i+8,j:j+8,0]
                 D = np.dot(np.dot(P,M),Pt)
                 d_by_q = np.divide(D,MATRIX_Q)
-                tt = np.empty((8,8))
-                tt[0:frequence,0:frequence] = np.flipud(np.tril(np.flipud(d_by_q[0:frequence,0:frequence]),0))
-                img_matrix[i:i+8,j:j+8,0] = tt
+                d_by_q[k+p > frequence] = 0
+                img_matrix[i:i+8,j:j+8,0] = d_by_q
                 
                 # COMPRESSION DU CANAL G
                 M = img_matrix[i:i+8,j:j+8,1]
                 D = np.dot(np.dot(P,M),Pt)
                 d_by_q = np.divide(D,MATRIX_Q)
-                tt = np.empty((8,8))
-                tt[0:frequence,0:frequence] = np.flipud(np.tril(np.flipud(d_by_q[0:frequence,0:frequence]),0))
-                img_matrix[i:i+8,j:j+8,1] = tt
+                d_by_q[k+p > frequence] = 0
+                img_matrix[i:i+8,j:j+8,1] = d_by_q
+                
                 
                 # COMPRESSION DU CANAL B
                 M = img_matrix[i:i+8,j:j+8,2]
                 D = np.dot(np.dot(P,M),Pt)
                 d_by_q = np.divide(D,MATRIX_Q)
-                tt = np.empty((8,8))
-                tt[0:frequence,0:frequence] = np.flipud(np.tril(np.flipud(d_by_q[0:frequence,0:frequence]),0))
-                img_matrix[i:i+8,j:j+8,2] = tt
+                d_by_q[k+p > frequence] = 0
+                img_matrix[i:i+8,j:j+8,2] = d_by_q
+                
                 
         return img_matrix.astype(int),new_height,new_width # end function
 
@@ -161,7 +202,14 @@ def DCTII_AND_COMPRESS(path_image,P,Pt,methode,frequence):
 
 
 def matrixPassageOrtho(n):
-    
+    """Calcul de la matrice orthogonale
+
+    Args:
+        n pour la taille de la matrice carré (ici 8 pour notre algorithme)
+
+    Returns (np.array := dim(x,y) = dim(8,8)):
+        
+    """
     P = np.array([[0.0]*n]*n)
     C0 = 1/(mp.sqrt(2))
     for i in range(0,n):
@@ -175,6 +223,15 @@ def matrixPassageOrtho(n):
 
 
 def Filtre(bloc, filtre):
+    """filtrage du bloc donné en argument
+
+    Args:
+        bloc (np.array := matrix 2D): le bloc non-filtré
+        filtre (int): la fréquence du filtre
+
+    Returns:
+        np.array := matrix 2D : le même bloc mais filtré
+    """
     
     new_bloc = np.array([[0.0]*8]*8)
     
@@ -197,12 +254,23 @@ def Filtre(bloc, filtre):
 
 
 def DECOMPRESSION(matrix_compress,P ,Pt):
+    """ Fonction de décompression de l'image :
+        Le choix a été fait de renvoyer une copie de la matrice et de ne pas modififier la référence.
+
+    Args:
+        matrix_compress (np.array := matrix 3D := dim(largeur,hauteur,3)): la matrice compressé de l'image
+        P (np.array := matrix 2D): la matrice orthogonale P
+        Pt (np.array := matrix 2D): la transposée de la de P
+
+    Returns:
+        (np.array := dim(x,y,z) = dim(largeur,hauteur,3)): matrice "3D" de l'image décompressé
+    """
     
-    dim = np.shape(matrix_compress)
-    width = dim[0]
-    height = dim[1]
+    dim = np.shape(matrix_compress) # on récupère les attributs de dimension de la matrice
+    width = dim[0]                  # largeur de l'image (int)
+    height = dim[1]                 # hauteur de l'image (int)
     
-    matrix_decompress = np.empty((width,height,3))
+    matrix_decompress = np.empty((width,height,3))  
     
 
     for i in range(0,width,8):
@@ -245,11 +313,11 @@ def DECOMPRESSION(matrix_compress,P ,Pt):
 P = matrixPassageOrtho(8)
 Pt = P.transpose()
 
-img = np.array(getImage(IMG_PATH_2))
+img = np.array(getImage(IMG_PATH_3))
 
 start_time_compression = time.time()
 
-image_compress = DCTII_AND_COMPRESS(IMG_PATH_2,P,Pt,False,2)
+image_compress = DCTII_AND_COMPRESS(IMG_PATH_3,P,Pt,False,6)
 
 final_time_compression = time.time()
 
@@ -260,9 +328,19 @@ image_decompress = DECOMPRESSION(image_compress[0],P,Pt)
 final_time_decompression = time.time()
 
 
+
+#####################################################################
+#                                                                   #
+#                   AFFICHAGE DE QUELQUES INFOS UTILES              #
+#                                                                   #
+#####################################################################
+
+
 print('Compression Ratio = ',(1-((np.count_nonzero(image_compress[0]))/(image_compress[1]*image_compress[2]*3)))*100,' %')
 
 print('Erreur en Norme L2 = ',(LA.norm(img-image_decompress)/LA.norm(img))*100,' %')
+
+print("Nombres de blocs traités = ", (image_compress[1]*image_compress[2])/64)
 
 print("Temps Exécution Compression = ",(final_time_compression - start_time_compression), " secondes")
 
@@ -276,6 +354,7 @@ print("Temps Exécution Compression + Décompression = ", final_time_decompressi
 #     AFFICHAGE DE L'IMAGE APRES COMPRESSION - DECOMPRESSION        #
 #                                                                   #
 #####################################################################
+
 # COMPRESSION - DECOMPRESSION
 plt.figure("image compressée puis décompressée")
 plt.imshow(image_decompress)
