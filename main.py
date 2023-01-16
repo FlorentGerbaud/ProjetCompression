@@ -5,6 +5,7 @@ from PIL import Image
 from copy import copy
 import time
 from numpy import linalg as LA
+import sys
 
 
 #####################################################################
@@ -115,7 +116,7 @@ def DCTII_AND_COMPRESS(path_image,P,Pt,methode,frequence):
     new_width = width - (width%8) # après troncage
     new_height = height - (height%8) # après troncage
     
-    print("Résolution de l'image = ",new_height,' x ',new_width )
+    print("Résolution de l'image =",new_height,'*',new_width )
     
     for i in range(width-1, new_width-1,-1): # suppression des lignes en trop
         img_matrix = np.delete(img_matrix,i,0) # supression des colonnes en trop
@@ -128,10 +129,11 @@ def DCTII_AND_COMPRESS(path_image,P,Pt,methode,frequence):
     
 
     # COMPRESSION DE CHAQUE CANAL
+
     if(methode == True):
         
         print("Sans filtrage hautes fréquences")
-        
+  
         for i in range(0,new_width,8): 
             
             for j in range(0,new_height,8):
@@ -153,13 +155,15 @@ def DCTII_AND_COMPRESS(path_image,P,Pt,methode,frequence):
                 D = np.dot(np.dot(P,M),Pt)
                 d_by_q = np.divide(D,MATRIX_Q)
                 img_matrix[i:i+8,j:j+8,2] = d_by_q
-                
+
         return img_matrix.astype(int),new_height,new_width # end function
     
     else:
 
         k, p = np.indices((8,8))
-        
+        print(k)
+        print(p)
+        print(k+p)
         for i in range(0,new_width,8): 
             
             for j in range(0,new_height,8):
@@ -186,9 +190,9 @@ def DCTII_AND_COMPRESS(path_image,P,Pt,methode,frequence):
                 d_by_q = np.divide(D,MATRIX_Q)
                 d_by_q[k+p > frequence] = 0
                 img_matrix[i:i+8,j:j+8,2] = d_by_q
-                
-                
+
         return img_matrix.astype(int),new_height,new_width # end function
+    
 
     
                 
@@ -313,11 +317,14 @@ def DECOMPRESSION(matrix_compress,P ,Pt):
 P = matrixPassageOrtho(8)
 Pt = P.transpose()
 
-img = np.array(getImage(IMG_PATH_3))
+arg = sys.argv[1]
+img = np.array(getImage(arg))
+
+filtre = int(sys.argv[2])
 
 start_time_compression = time.time()
 
-image_compress = DCTII_AND_COMPRESS(IMG_PATH_3,P,Pt,False,6)
+image_compress = DCTII_AND_COMPRESS(arg,P,Pt,False,filtre)
 
 final_time_compression = time.time()
 
@@ -336,17 +343,17 @@ final_time_decompression = time.time()
 #####################################################################
 
 
-print('Compression Ratio = ',(1-((np.count_nonzero(image_compress[0]))/(image_compress[1]*image_compress[2]*3)))*100,' %')
+print('Compression Ratio =',(1-((np.count_nonzero(image_compress[0]))/(image_compress[1]*image_compress[2]*3)))*100,' %')
 
-print('Erreur en Norme L2 = ',(LA.norm(img-image_decompress)/LA.norm(img))*100,' %')
+print('Erreur en Norme L2 =',(LA.norm(img-image_decompress)/LA.norm(img))*100,' %')
 
-print("Nombres de blocs traités = ", (image_compress[1]*image_compress[2])/64)
+print("Nombres de blocs traités =", (image_compress[1]*image_compress[2])/64)
 
-print("Temps Exécution Compression = ",(final_time_compression - start_time_compression), " secondes")
+print("Temps Exécution Compression =",(final_time_compression - start_time_compression), " secondes")
 
-print("Temps Exécution Décompression = ",(final_time_decompression - start_time_decompression), " secondes")
+print("Temps Exécution Décompression =",(final_time_decompression - start_time_decompression), " secondes")
 
-print("Temps Exécution Compression + Décompression = ", final_time_decompression - start_time_compression, " secondes")
+print("Temps Exécution Compression + Décompression =", final_time_decompression - start_time_compression, " secondes")
 
 
 #####################################################################
@@ -356,13 +363,13 @@ print("Temps Exécution Compression + Décompression = ", final_time_decompressi
 #####################################################################
 
 # COMPRESSION - DECOMPRESSION
-plt.figure("image compressée puis décompressée")
-plt.imshow(image_decompress)
+# plt.figure("image compressée puis décompressée")
+# plt.imshow(image_decompress)
 
-# ORIGINELLE
-plt.figure("image de base")
-plt.imshow(img)
-plt.show()
+# # ORIGINELLE
+# plt.figure("image de base")
+# plt.imshow(img)
+# plt.show()
 
 
 
